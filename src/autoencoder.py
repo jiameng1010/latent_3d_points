@@ -62,8 +62,8 @@ class Configuration():
         return hasattr(self, attribute) and getattr(self, attribute) is not None
 
     def __str__(self):
-        keys = self.__dict__.keys()
-        vals = self.__dict__.values()
+        keys = list(self.__dict__.keys())
+        vals = list(self.__dict__.values())
         index = np.argsort(keys)
         res = ''
         for i in index:
@@ -179,7 +179,7 @@ class AutoEncoder(Neural_Net):
         if c.saver_step is not None:
             create_dir(c.train_dir)
 
-        for _ in xrange(c.training_epochs):
+        for _ in range(c.training_epochs):
             loss, duration = self._single_epoch_train(train_data, c)
             epoch = int(self.sess.run(self.epoch.assign_add(tf.constant(1.0))))
             stats.append((epoch, loss, duration))
