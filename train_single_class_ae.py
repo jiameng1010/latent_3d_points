@@ -35,7 +35,7 @@ top_out_dir = '/home/mjia/Documents/Shapenet_processing/latent_3d_points/data/' 
 top_in_dir = '/home/mjia/Documents/Shapenet_processing/latent_3d_points/data/shape_net_core_uniform_samples_2048/' # Top-dir of where point-clouds are stored.
 
 experiment_name = 'single_class_ae'
-n_pc_points = 2048                # Number of points per model.
+n_pc_points = 1024                # Number of points per model.
 bneck_size = 128                  # Bottleneck-AE size
 ae_loss = 'emd'                   # Loss to optimize: 'emd' or 'chamfer'
 class_name = 'sofa'#raw_input('Give me the class name (e.g. "chair"): ').lower()

@@ -88,13 +88,13 @@ class AutoEncoder(Neural_Net):
     '''Basis class for a Neural Network that implements an Auto-Encoder in TensorFlow.
     '''
 
-    def __init__(self, name, graph, configuration):
+    def __init__(self, conf, name, graph, configuration):
         Neural_Net.__init__(self, name, graph)
         self.is_denoising = configuration.is_denoising
         self.n_input = configuration.n_input
         self.n_output = configuration.n_output
 
-        in_shape = [None] + self.n_input
+        in_shape = [conf.batch_size] + self.n_input
         out_shape = [None] + self.n_output
 
         with tf.variable_scope(name):
@@ -123,6 +123,7 @@ class AutoEncoder(Neural_Net):
             The loss of the mini-batch.
             The reconstructed (output) point-clouds.
         '''
+        X = X[:, 0:1024, :]
         is_training(True, session=self.sess)
         try:
             if GT is not None:

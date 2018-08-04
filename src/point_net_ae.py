@@ -7,6 +7,8 @@ Created on January 26, 2017
 import time
 import tensorflow as tf
 import os.path as osp
+from . import my_models
+from . import dgcnn
 
 from tflearn.layers.conv import conv_1d
 from tflearn.layers.core import fully_connected
@@ -31,13 +33,16 @@ class PointNetAutoEncoder(AutoEncoder):
         c = configuration
         self.configuration = c
 
-        AutoEncoder.__init__(self, name, graph, configuration)
+        AutoEncoder.__init__(self, c, name, graph, configuration)
 
         with tf.variable_scope(name):
-            self.z = c.encoder(self.x, **c.encoder_args)
+            is_train = tf.constant(True)
+            #self.z = c.encoder(self.x, **c.encoder_args)
+            self.z, _ = dgcnn.get_model(self.x, is_train, c.batch_size)
             self.bottleneck_size = int(self.z.get_shape()[1])
-            layer = c.decoder(self.z, **c.decoder_args)
-            
+            #layer = c.decoder(self.z, **c.decoder_args)
+            layer = my_models.decoder_generator(self.z)
+
             if c.exists_and_is_not_none('close_with_tanh'):
                 layer = tf.nn.tanh(layer)
 
