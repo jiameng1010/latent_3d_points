@@ -125,7 +125,7 @@ class PointNetAutoEncoder(AutoEncoder):
             else:
                 batch_i, _, _ = train_data.next_batch(batch_size)
 
-            batch_i = apply_augmentations(batch_i, configuration)   # This is a new copy of the batch.
+            #batch_i = apply_augmentations(batch_i, configuration)   # This is a new copy of the batch.
 
             if self.is_denoising:
                 _, loss = fit(batch_i, original_data)
@@ -140,6 +140,37 @@ class PointNetAutoEncoder(AutoEncoder):
         if configuration.loss == 'emd':
             epoch_loss /= len(train_data.point_clouds[0])
         
+        return epoch_loss, duration
+
+    def part_single_epoch_train(self, train_data, configuration, only_fw=False):
+        n_examples = train_data.num_examples
+        epoch_loss = 0.
+        batch_size = configuration.batch_size
+        n_batches = int(n_examples / batch_size)
+        start_time = time.time()
+
+        if only_fw:
+            fit = self.reconstruct
+        else:
+            fit = self.partial_fit
+
+        # Loop over all batches
+        for _ in range(n_batches):
+
+            original_data, _, batch_i = train_data.part_next_batch(batch_size)
+
+            batch_i = apply_augmentations(batch_i, configuration)  # This is a new copy of the batch.
+
+            _, loss = fit(batch_i, original_data)
+
+            # Compute average loss
+            epoch_loss += loss
+        epoch_loss /= n_batches
+        duration = time.time() - start_time
+
+        if configuration.loss == 'emd':
+            epoch_loss /= len(train_data.point_clouds[0])
+
         return epoch_loss, duration
 
     def gradient_of_input_wrt_loss(self, in_points, gt_points=None):

@@ -23,9 +23,11 @@ def generate_cloud(feature, noise):
     #point = layers.fully_connected(point, 128)#, activation_fn=tf.nn.leaky_relu)
     #point = layers.dropout(point, keep_prob=0.8)
     #point = layers.fully_connected(point, 32)#, activation_fn=tf.nn.leaky_relu)
-    point = layers.fully_connected(point, 32)#, activation_fn=tf.nn.leaky_relu)
-    point = layers.fully_connected(point, 16)#, activation_fn=tf.nn.leaky_relu)
+    point = layers.fully_connected(point, 128)#, activation_fn=tf.nn.leaky_relu)
+    #point = layers.fully_connected(point, 16)#, activation_fn=tf.nn.leaky_relu)
     point = layers.fully_connected(point, 3, activation_fn=tf.nn.tanh)
+    point = tf.reshape(point, [point.get_shape()[0].value, 3*point.get_shape()[1].value, -1])
+    point = tf.squeeze(point)
 
     return point
 

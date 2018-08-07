@@ -6,6 +6,7 @@ import os.path as osp
 import re
 from six.moves import cPickle
 from multiprocessing import Pool
+import h5py
 
 from . general_utils import rand_rotation_matrix
 from .. external.python_plyfile.plyfile import PlyElement, PlyData
@@ -109,12 +110,46 @@ def pc_loader(f_name):
     synet_id = tokens[-2]
     return load_ply(f_name), model_id, synet_id
 
+####################################################
+def part_pc_loader(f_name):
+    ''' loads a point-cloud saved under ShapeNet's "standar" folder scheme:
+    i.e. /syn_id/model_name.ply
+    '''
+    tokens = f_name.split('/')
+    model_id = tokens[-1].split('.')[0]
+    synet_id = tokens[-2]
+    f = h5py.File(f_name, 'r')
+    point_cloud = f["pointcloud"][:]
+    f.close()
+    complete = np.expand_dims(point_cloud[0], axis=0)
+    return np.concatenate((complete, complete, complete, complete)),\
+           point_cloud[1:5], model_id, synet_id
 
 def load_all_point_clouds_under_folder(top_dir, n_threads=20, file_ending='.ply', verbose=False):
     file_names = [f for f in files_in_subdirs(top_dir, file_ending)]
     pclouds, model_ids, syn_ids = load_point_clouds_from_filenames(file_names, n_threads, loader=pc_loader, verbose=verbose)
     return PointCloudDataSet(pclouds, labels=syn_ids + '_' + model_ids, init_shuffle=False)
 
+###################################################
+def load_part_point_clouds_under_folder(top_dir, n_threads=20, file_ending='.h5', verbose=False):
+    file_names = [f for f in files_in_subdirs(top_dir, file_ending)]
+    pclouds, part_pc, model_ids, syn_ids = load_part_point_clouds_from_filenames(file_names, n_threads,
+                                                                                 loader=part_pc_loader,
+                                                                                 verbose=verbose)
+    return PointCloudDataSet(pclouds, part_pc, labels=syn_ids + '_' + model_ids, init_shuffle=False)
+
+def load_part_point_clouds_from_filenames(file_names, n_threads, loader, verbose=False):
+    pc = loader(file_names[0])[0]
+    pclouds = np.empty([4*len(file_names), pc.shape[1], pc.shape[2]], dtype=np.float32)
+    part_pc = np.empty([4*len(file_names), pc.shape[1], pc.shape[2]], dtype=np.float32)
+    model_names = np.empty([4*len(file_names)], dtype=object)
+    class_ids = np.empty([4*len(file_names)], dtype=object)
+    pool = Pool(n_threads)
+    for i, data in enumerate(pool.imap(loader, file_names)):
+        pclouds[(4*i):(4*i+4), :, :], part_pc[(4*i):(4*i+4), :, :], model_names[(4*i):(4*i+4)], class_ids[(4*i):(4*i+4)] = data
+    pool.close()
+    pool.join()
+    return pclouds, part_pc, model_names, class_ids
 
 def load_point_clouds_from_filenames(file_names, n_threads, loader, verbose=False):
     pc = loader(file_names[0])[0]
@@ -143,7 +178,7 @@ class PointCloudDataSet(object):
     See https://github.com/tensorflow/tensorflow/blob/a5d8217c4ed90041bea2616c14a8ddcf11ec8c03/tensorflow/examples/tutorials/mnist/input_data.py
     '''
 
-    def __init__(self, point_clouds, noise=None, labels=None, copy=True, init_shuffle=True):
+    def __init__(self, point_clouds, part_pc=None, noise=None, labels=None, copy=True, init_shuffle=True):
         '''Construct a DataSet.
         Args:
             init_shuffle, shuffle data before first epoch has been reached.
@@ -178,6 +213,9 @@ class PointCloudDataSet(object):
         else:
             self.point_clouds = point_clouds
 
+        if part_pc is not None:
+            self.part_point_clouds = part_pc
+
         self.epochs_completed = 0
         self._index_in_epoch = 0
         if init_shuffle:
@@ -211,6 +249,22 @@ class PointCloudDataSet(object):
             return self.point_clouds[start:end], self.labels[start:end], None
         else:
             return self.point_clouds[start:end], self.labels[start:end], self.noisy_point_clouds[start:end]
+
+#####################################################
+    def part_next_batch(self, batch_size, seed=None):
+        '''Return the next batch_size examples from this data set.
+        '''
+        start = self._index_in_epoch
+        self._index_in_epoch += batch_size
+        if self._index_in_epoch > self.num_examples:
+            self.epochs_completed += 1  # Finished epoch.
+            self.shuffle_data(seed)
+            # Start next epoch
+            start = 0
+            self._index_in_epoch = batch_size
+        end = self._index_in_epoch
+
+        return self.point_clouds[start:end], self.labels[start:end], self.part_point_clouds[start:end]
 
     def full_epoch_data(self, shuffle=True, seed=None):
         '''Returns a copy of the examples of the entire data set (i.e. an epoch's data), shuffled.

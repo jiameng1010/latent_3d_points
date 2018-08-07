@@ -13,7 +13,8 @@ from latent_3d_points.src.ae_templates import mlp_architecture_ala_iclr_18, defa
 from latent_3d_points.src.autoencoder import Configuration as Conf
 from latent_3d_points.src.point_net_ae import PointNetAutoEncoder
 
-from latent_3d_points.src.in_out import snc_category_to_synth_id, create_dir, PointCloudDataSet,                                         load_all_point_clouds_under_folder
+from latent_3d_points.src.in_out import snc_category_to_synth_id, create_dir, PointCloudDataSet,\
+    load_all_point_clouds_under_folder, load_part_point_clouds_under_folder
 
 from latent_3d_points.src.tf_utils import reset_tf_graph
 
@@ -48,8 +49,8 @@ class_name = 'sofa'#raw_input('Give me the class name (e.g. "chair"): ').lower()
 
 syn_id = snc_category_to_synth_id()[class_name]
 class_dir = osp.join(top_in_dir , syn_id)
-all_pc_data = load_all_point_clouds_under_folder(class_dir, n_threads=8, file_ending='.ply', verbose=True)
-
+all_pc_data = load_part_point_clouds_under_folder("/home/mjia/Documents/Shapenet_processing/latent_3d_points/data/ModelNet40C/sofa/train", n_threads=8, file_ending='.h5', verbose=True)
+#all_pc_data = load_all_point_clouds_under_folder(class_dir, n_threads=8, file_ending='.ply', verbose=True)
 
 # Load default training parameters (some of which are listed beloq). For more details please print the configuration object.
 # 
@@ -134,9 +135,9 @@ fout.close()
 # In[13]:
 
 
-feed_pc, feed_model_names, _ = all_pc_data.next_batch(10)
-reconstructions = ae.reconstruct(feed_pc)
-latent_codes = ae.transform(feed_pc)
+feed_pc, feed_model_names, feed_part_pc = all_pc_data.part_next_batch(30)
+reconstructions = ae.reconstruct(feed_part_pc, GT=feed_pc)
+latent_codes = ae.transform(feed_part_pc)
 
 
 # Use any plotting mechanism such as matplotlib to visualize the results.

@@ -102,7 +102,7 @@ class AutoEncoder(Neural_Net):
             if self.is_denoising:
                 self.gt = tf.placeholder(tf.float32, out_shape)
             else:
-                self.gt = self.x
+                self.gt = tf.placeholder(tf.float32, out_shape)
 
     def restore_model(self, model_path, epoch, verbose=False):
         '''Restore all the variables of a saved auto-encoder model.
@@ -123,6 +123,7 @@ class AutoEncoder(Neural_Net):
             The loss of the mini-batch.
             The reconstructed (output) point-clouds.
         '''
+        np.take(X, np.random.permutation(X.shape[1]), axis=1, out=X)
         X = X[:, 0:1024, :]
         is_training(True, session=self.sess)
         try:
@@ -181,7 +182,7 @@ class AutoEncoder(Neural_Net):
             create_dir(c.train_dir)
 
         for _ in range(c.training_epochs):
-            loss, duration = self._single_epoch_train(train_data, c)
+            loss, duration = self.part_single_epoch_train(train_data, c)
             epoch = int(self.sess.run(self.epoch.assign_add(tf.constant(1.0))))
             stats.append((epoch, loss, duration))
 
